@@ -75,6 +75,7 @@ char *sanitize_path(const char *path) {
         strcat(out, segments[i]);
     }
 
+    free(copy);
     return out;
 }
 
@@ -167,9 +168,8 @@ char *get_filename_name(const char *filename) {
     char *filename_out = strdup(filename);
     char *dot = strrchr(filename_out, '.');
     if (!dot || dot == filename_out) {
-        char *empty_string = malloc(1);
-        *empty_string = '\0';
-        return empty_string;
+        *filename_out = '\0';
+        return filename_out;
     };
     *dot = '\0';
     return filename_out;
