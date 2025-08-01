@@ -1,12 +1,20 @@
 #define _POSIX_C_SOURCE 200809L
 
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include "mime.h"
 #include "request.h"
 #include "utils.h"
 
+#define QUEUED_REQUESTS 10
+
+void sigchld_handler(int s) {
+    // Use a loop to reap all dead children
+    while (waitpid(-1, NULL, WNOHANG) > 0);
+}
 struct CliArguments {
     char *host;
     int port;
@@ -38,6 +46,17 @@ struct CliArguments parse_cli_arguments(int argc, char *argv[]) {
     return cli_arguments;
 }
 
+struct RequestData handle_request(int client_fd, const char *serve_path) {
+    struct RequestData request_data = parse_request(client_fd, serve_path);
+
+    if (validate_request_data(client_fd, &request_data)) {
+        write_request(client_fd, request_data);
+    }
+
+    close(client_fd);
+    return request_data;
+}
+
 int main(int argc, char *argv[]) {
     struct CliArguments cli_arguments = parse_cli_arguments(argc, argv);
 
@@ -57,6 +76,15 @@ int main(int argc, char *argv[]) {
     // load mime types, so they can be used later in the program
     load_mime_types();
 
+    struct sigaction sa;
+    sa.sa_handler = sigchld_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;  // Restart interrupted system calls
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        perror("sigaction");
+        exit(1);
+    }
+
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
@@ -66,7 +94,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    if (listen(server_fd, 10) < 0) {
+    if (listen(server_fd, QUEUED_REQUESTS) < 0) {
         perror("listen failed");
         close(server_fd);
         exit(EXIT_FAILURE);
@@ -88,16 +116,11 @@ int main(int argc, char *argv[]) {
             close(server_fd);  // child doesn't need listening socket
 
             struct RequestData request_data =
-                parse_request(client_fd, cli_arguments.serve_path);
+                handle_request(client_fd, cli_arguments.serve_path);
+
             printf("%s %s\n", request_data.info.method,
                    request_data.info.target);
-
-            if (validate_request_data(client_fd, &request_data)) {
-                write_request(client_fd, request_data);
-            }
-
-            close(client_fd);
-            exit(EXIT_FAILURE);
+            exit(0);
         } else if (pid > 0) {
             close(client_fd);  // parent shouldn't have accepted
                                // socket
