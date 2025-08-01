@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
@@ -11,13 +12,14 @@
 
 #define QUEUED_REQUESTS 10
 
-void sigchld_handler(int s) {
-    // Use a loop to reap all dead children
-    while (waitpid(-1, NULL, WNOHANG) > 0);
-}
 struct CliArguments {
     char *host;
     int port;
+    char *serve_path;
+};
+
+struct ThreadArgs {
+    int client_fd;
     char *serve_path;
 };
 
@@ -57,6 +59,20 @@ struct RequestData handle_request(int client_fd, const char *serve_path) {
     return request_data;
 }
 
+void *thread_handle_request(void *arg) {
+    struct ThreadArgs *args = (struct ThreadArgs *)arg;
+
+    int client_fd = args->client_fd;
+    char *serve_path = args->serve_path;
+    free(args);  // free memory allocated for args
+
+    struct RequestData request_data = handle_request(client_fd, serve_path);
+
+    printf("%s %s\n", request_data.info.method, request_data.info.target);
+
+    pthread_exit(NULL);
+}
+
 int main(int argc, char *argv[]) {
     struct CliArguments cli_arguments = parse_cli_arguments(argc, argv);
 
@@ -75,15 +91,6 @@ int main(int argc, char *argv[]) {
 
     // load mime types, so they can be used later in the program
     load_mime_types();
-
-    struct sigaction sa;
-    sa.sa_handler = sigchld_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;  // Restart interrupted system calls
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-        perror("sigaction");
-        exit(1);
-    }
 
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -111,23 +118,27 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
-        pid_t pid = fork();
-        if (pid == 0) {        // child process
-            close(server_fd);  // child doesn't need listening socket
-
-            struct RequestData request_data =
-                handle_request(client_fd, cli_arguments.serve_path);
-
-            printf("%s %s\n", request_data.info.method,
-                   request_data.info.target);
-            exit(0);
-        } else if (pid > 0) {
-            close(client_fd);  // parent shouldn't have accepted
-                               // socket
-        } else {
-            perror("fork failed");
+        pthread_t tid;
+        struct ThreadArgs *args = malloc(sizeof(struct ThreadArgs));
+        if (!args) {
+            perror("malloc failed");
             close(client_fd);
+            continue;
         }
+
+        args->client_fd = client_fd;
+        args->serve_path =
+            cli_arguments.serve_path;  // assumed to be constant/shared
+
+        if (pthread_create(&tid, NULL, thread_handle_request, args) != 0) {
+            perror("pthread_create failed");
+            close(client_fd);
+            free(args);
+            continue;
+        }
+
+        // Option 1: Detach thread so it cleans up after itself
+        pthread_detach(tid);
     }
 
     close(server_fd);
