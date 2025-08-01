@@ -1,0 +1,53 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-std=c11",
+      "-g",
+      "-Iinclude",
+      "-o",
+      "webserver",
+      "src/main.c"
+    ],
+    "directory": "/home/gerhard/programming/c/cwebserver",
+    "file": "/home/gerhard/programming/c/cwebserver/src/main.c",
+    "output": "/home/gerhard/programming/c/cwebserver/webserver"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-std=c11",
+      "-g",
+      "-Iinclude",
+      "-o",
+      "webserver",
+      "src/request.c"
+    ],
+    "directory": "/home/gerhard/programming/c/cwebserver",
+    "file": "/home/gerhard/programming/c/cwebserver/src/request.c",
+    "output": "/home/gerhard/programming/c/cwebserver/webserver"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-Wall",
+      "-Wextra",
+      "-std=c11",
+      "-g",
+      "-Iinclude",
+      "-o",
+      "webserver",
+      "src/utils.c"
+    ],
+    "directory": "/home/gerhard/programming/c/cwebserver",
+    "file": "/home/gerhard/programming/c/cwebserver/src/utils.c",
+    "output": "/home/gerhard/programming/c/cwebserver/webserver"
+  }
+]
