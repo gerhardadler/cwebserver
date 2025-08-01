@@ -45,7 +45,7 @@ char *url_decode(const char *src) {
 }
 
 char *sanitize_path(const char *path) {
-    char *out = malloc(strlen(path) + 1);
+    char *out = malloc(PATH_MAX);
     if (!out) return NULL;
 
     char *segments[256];
@@ -58,7 +58,7 @@ char *sanitize_path(const char *path) {
         if (strcmp(token, ".") == 0 || strcmp(token, "") == 0) {
             // skip
         } else if (strcmp(token, "..") == 0 && seg_count > 0) {
-            segments[seg_count] = '\0';
+            segments[seg_count] = NULL;
             seg_count--;
         } else {
             segments[seg_count] = token;
