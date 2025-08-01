@@ -2,6 +2,8 @@
 
 This is a simple webserver I've created to learn the basics of C.
 
+As of now, the server will simply serve static files in a directory.
+
 ## Dependencies
 
 - GNU Make
