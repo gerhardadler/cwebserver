@@ -27,7 +27,7 @@ struct CliArguments parse_cli_arguments(int argc, char *argv[]) {
     struct CliArguments cli_arguments;
     cli_arguments.host = "localhost";
     cli_arguments.port = 8080;
-    cli_arguments.serve_path = "";
+    cli_arguments.serve_path = "./";
 
     for (int i = 1; i < argc - 1; i++) {
         char *arg = argv[i];
@@ -109,6 +109,10 @@ int main(int argc, char *argv[]) {
 
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
+
+    printf("Starting server on %s:%d, serving from %s\n", cli_arguments.host,
+           cli_arguments.port, cli_arguments.serve_path);
+    fflush(stdout);
 
     while (1) {
         int client_fd =
